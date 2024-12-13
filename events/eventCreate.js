@@ -9,7 +9,7 @@ const axios = require('axios');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GENAI);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
 // In-memory user state to track progress (use a database for persistence if necessary)
 const userStates = {};
@@ -45,15 +45,11 @@ module.exports = (bot) => {
 
         switch (data) {
             case "menu":
-                await bot.sendMessage(message.chat.id, '*Choose an option:*', {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [{ text: '📜 Tests', callback_data: 'tests' }],
-                            [{ text: '🧲 Download', callback_data: 'download' }]
-                        ]
-                    },
-                    parse_mode: "Markdown"
-                });
+                await bot.sendMessage(msg.chat.id, '*Choose an option:*', menuOptions);
+                break;
+            case "stop_ai":
+                waitingAiPrompt[message.chat.id] = null;
+                await bot.sendMessage(message.chat.id, 'AI stopped', { reply_markup: { remove_keyboard: true } });
                 break;
             case "document":
                 await bot.sendMessage(message.chat.id, 
@@ -314,22 +310,24 @@ module.exports = (bot) => {
             console.log(tests)
         }
         if (waitingAiPrompt[chatId] && waitingAiPrompt[chatId].state) {
+            console.log("Got AI prompt:", text);
             var textForAI = msg.text;
-            waitingAiPrompt[chatId] = false;
             var prompt;
             if (waitingAiPrompt[chatId].document) {
                 prompt = "Given data from you, will be automatically generated into a document. So don't use any formatting. Prompt:\n" + textForAI;
             } else {
-                prompt = "Prompt:\n" + textForAI;
+                prompt = "Don't use any formatting. Prompt:\n" + textForAI;
             }
-
+            
+            console.log("Generating response...");
             const result = await model.generateContent(prompt);
             console.log(result.response.text());
             
             if (waitingAiPrompt[chatId].document) {
+                console.log("Creating a document...")
                 const fileName = 'document.docx';
                 const filePath = path.join(__dirname, 'downloads', fileName);
-    
+                
                 fs.writeFile(filePath, result.response.text(), async (err) => {
                     if (err) {
                         console.error('Error writing document:', err);
@@ -338,8 +336,16 @@ module.exports = (bot) => {
                         await bot.sendDocument(chatId, filePath);
                     }
                 });
+                waitingAiPrompt[chatId] = null;
             } else {
-                await bot.sendMessage(chatId, result.response.text());
+                console.log("Sending answer to user...")
+                await bot.sendMessage(chatId, result.response.text(), {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '❌ Stop', callback_data: 'stop_ai' }]
+                        ]
+                    }
+                });
             }
         }
     });
