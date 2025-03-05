@@ -370,7 +370,7 @@ function calculateReputationDays(currentRepString, dailyGain = 2100) {
     const levels = [
         { name: "Дружелюбие", max: 6000 },
         { name: "Уважение", max: 12000 },
-        { name: "Почтение", max: 18000 },
+        { name: "Почтение", max: 21000 },
         { name: "Превознесение", max: 0 }
     ];
     
