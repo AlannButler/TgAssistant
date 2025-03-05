@@ -26,6 +26,7 @@ const menuOptions = {
     parse_mode: "Markdown"
 };
 const waitingAiPrompt = {};
+const waitingMessage = {};
 
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
