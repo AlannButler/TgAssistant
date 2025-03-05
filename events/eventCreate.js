@@ -19,7 +19,8 @@ const menuOptions = {
             [{ text: '📜 Tests', callback_data: 'tests' }],
             [{ text: '🧲 Download', callback_data: 'download' }],
             [{ text: '📄 Document', callback_data: 'document' }],
-            [{ text: '📚 AI', callback_data: 'ai' }]
+            [{ text: '📚 AI', callback_data: 'ai' }],
+            [{ text: '🔍 Reputation', callback_data: 'reputation' }],
         ]
     },
     parse_mode: "Markdown"
