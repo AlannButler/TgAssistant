@@ -65,6 +65,10 @@ module.exports = (bot) => {
                 );
                 waitingAiPrompt[message.chat.id] = {state: true, document: false};
                 break;
+            case "reputation":
+                await bot.sendMessage(message.chat.id, "Enter your current reputation string:");
+                waitingMessage[message.chat.id] = { state: "reputation" };
+                break;
             case "youtube":
                 await bot.sendMessage(message.chat.id, 'Please enter the URL of the Youtube video you want to download:', { reply_markup: { remove_keyboard: true } });
                 bot.on("message", async (msg) => {
@@ -305,9 +309,18 @@ module.exports = (bot) => {
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         const text = msg.text;
+        const userId = msg.from.id;
+
+        if (userId !== 1944820935) return;
+
         if (text === "test_mongoose") {
             const tests = await TestsSchema.find({ "questions.answers": { $size: 0 } });
             console.log(tests)
+        }
+        if (waitingMessage[chatId].state === "reputation") {
+            const { days, totalNeeded } = calculateReputationDays(text);
+            await bot.sendMessage(chatId, `You need ${totalNeeded} reputation points to reach the next level. At the current rate of 2100 reputation points per day, you will reach the next level in ${days} days.`);
+            waitingMessage[chatId] = null;
         }
         if (waitingAiPrompt[chatId] && waitingAiPrompt[chatId].state) {
             console.log("Got AI prompt:", text);
@@ -350,3 +363,37 @@ module.exports = (bot) => {
         }
     });
 };
+
+function calculateReputationDays(currentRepString, dailyGain = 2100) {
+    const levels = [
+        { name: "Дружелюбие", max: 6000 },
+        { name: "Уважение", max: 12000 },
+        { name: "Почтение", max: 18000 },
+        { name: "Превознесение", max: 0 }
+    ];
+    
+    const match = currentRepString.match(/(.+)\((\d+)\/(\d+)\)/);
+
+    if (!match) {
+        throw new Error("Неверный формат строки репутации");
+    }
+    
+    let [, currentLevel, currentRep, maxRep] = match;
+    currentRep = parseInt(currentRep);
+    maxRep = parseInt(maxRep);
+    
+    let totalNeeded = 0;
+    let found = false;
+    
+    for (let i = 0; i < levels.length - 1; i++) {
+        if (levels[i].name === currentLevel) {
+            totalNeeded += (maxRep - currentRep);
+            found = true;
+        } else if (found) {
+            totalNeeded += levels[i].max;
+        }
+    }
+    
+    const days = Math.ceil(totalNeeded / dailyGain);
+    return { days, totalNeeded };
+}
